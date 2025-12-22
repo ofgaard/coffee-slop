@@ -30,3 +30,27 @@ export async function saveArticle(articleData: ArticleData) {
   if (error) throw error;
   return data;
 }
+
+export async function checkArticleExists(videoId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('articles')
+    .select('id')
+    .eq('video_id', videoId)
+    .single();
+    
+  if (error && error.code !== 'PGRST116') throw error; 
+  return !!data;
+}
+
+
+export async function getAllArticles() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('articles')
+    .select()
+    .order('created_at', { ascending: false });
+    
+  if (error) throw error;
+  return data;
+}
