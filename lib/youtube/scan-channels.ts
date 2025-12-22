@@ -4,6 +4,7 @@ type NewVideo = {
   title: string;
   videoId: string;
   publishedAt: string;
+  thumbnail: string;
 };
 
 export default async function scanChannels(channelIds: string[]) {
@@ -36,7 +37,8 @@ export default async function scanChannels(channelIds: string[]) {
         return {
           title: video.snippet.title,
           videoId,
-          publishedAt: video.snippet.publishedAt
+          publishedAt: video.snippet.publishedAt,
+          thumbnail: video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high.url
         } as NewVideo;
       })
     );

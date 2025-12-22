@@ -6,6 +6,7 @@ type ArticleData = {
   summary: string;
   article: string;
   word_count: number;
+  thumbnail?: string;
 };
 
 export async function getArticleByVideoId(videoId: string) {
@@ -50,6 +51,31 @@ export async function getAllArticles() {
     .from('articles')
     .select()
     .order('created_at', { ascending: false });
+    
+  if (error) throw error;
+  return data;
+}
+
+export async function getLatestArticle() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('articles')
+    .select()
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+    
+  if (error) throw error;
+  return data;  
+}
+
+export async function getArticleById(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('articles')
+    .select()
+    .eq('id', id)
+    .single();
     
   if (error) throw error;
   return data;

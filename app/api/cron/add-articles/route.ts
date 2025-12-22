@@ -7,8 +7,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const channelIds = [
-      "UCMb0O2CdPBNi-QqPk5T3gsQ", // Hoffmann
-      "UCMpPVd0cp_vL0XbP3PeNn3g", // Lance Hedrick
+      "UCvNpZQzurSNZQ8e2QNGNXsA" // Lance Hedrick
     ];
 
     if (channelIds.length === 0) {
@@ -40,6 +39,7 @@ export async function GET() {
             summary: articleResult.summary,
             article: articleResult.article,
             word_count: articleResult.wordCount,
+            thumbnail: video.thumbnail,
           });
 
           results.push({

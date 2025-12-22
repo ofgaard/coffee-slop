@@ -16,6 +16,7 @@ export default async function HomePage() {
             <article key={article.id} className="mb-12">
               <h2 className="text-2xl font-semibold mb-2">{article.title}</h2>
               <p className="text-lg text-gray-600 mb-4">{article.summary}</p>
+      
               <div className="prose prose-lg">
                 {article.article}
               </div>
