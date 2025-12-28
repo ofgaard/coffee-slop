@@ -4,75 +4,80 @@ import { summarizeTranscript } from "@/lib/openai/summarize-transcript";
 import { saveArticle } from "@/lib/database/articles";
 import { NextResponse } from "next/server";
 
+type ArticleData = {
+  video_id: string;
+  title: string;
+  summary: string;
+  article: string;
+  word_count: number;
+  thumbnail?: string;
+  creator: string;
+};
+
+const CHANNEL_NAMES: Record<string, string> = {
+  "UCR2_8uHyWcTSV6iIw6BN4rg": "Lance Hedrick",
+  "UCMb0O2CdPBNi-QqPk5T3gsQ": "James Hoffmann"
+};
+
 export async function GET() {
   try {
     const channelIds = [
-      "UCvNpZQzurSNZQ8e2QNGNXsA" // Lance Hedrick
+      "UCR2_8uHyWcTSV6iIw6BN4rg", // Lance Hedrick
+      "UCMb0O2CdPBNi-QqPk5T3gsQ" // James Hoffmann
     ];
 
-    if (channelIds.length === 0) {
-      return NextResponse.json(
-        { error: "No channel IDs configured" },
-        { status: 400 }
-      );
-    }
-
-    
     const newVideos = await scanChannels(channelIds);
+    const newVideosFlattened = newVideos.flat();
 
-    const results = [];
-
-
-    for (const [channelId, videos] of Object.entries(newVideos)) {
-      for (const video of videos) {
-        try {
-   
-          const transcript = await getTranscript(video.videoId);
-          
-        
-          const articleResult = await summarizeTranscript(transcript);
-          
-        
-          const article = await saveArticle({
-            video_id: video.videoId,
-            title: articleResult.title,
-            summary: articleResult.summary,
-            article: articleResult.article,
-            word_count: articleResult.wordCount,
-            thumbnail: video.thumbnail,
-          });
-
-          results.push({
-            channelId,
-            videoId: video.videoId,
-            title: article.title,
-            status: "success",
-          });
-        } catch (error) {
-          console.error(`Failed to process video ${video.videoId}:`, error);
-          results.push({
-            channelId,
-            videoId: video.videoId,
-            status: "failed",
-            error: error instanceof Error ? error.message : "Unknown error",
-          });
-        }
+    const articlePromises = newVideosFlattened.map(async (video) => {
+      const transcript = await getTranscript(video.videoId);
+      if (transcript === null) {
+        throw new Error('transcription failed');
       }
-    }
+      const article = await summarizeTranscript(transcript);
+      if (article === null) {
+        throw new Error('summarization failed');
+      }
+
+      const articleData: ArticleData = {
+        video_id: video.videoId,
+        title: article.title,
+        summary: article.summary,
+        article: article.article,
+        word_count: article.wordCount,
+        thumbnail: video.thumbnail,
+        creator: CHANNEL_NAMES[video.channelId] || "Unknown"
+      };
+      
+      await saveArticle(articleData);
+
+      return {
+        videoId: video.videoId,
+        title: article.title,
+        success: true
+      };
+    });
+   
+    const results = await Promise.allSettled(articlePromises);
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
 
     return NextResponse.json({
-      message: "Cron job completed",
-      processed: results.length,
-      results,
+      success: true,
+      message: `Processed ${newVideosFlattened.length} videos`,
+      stats: {
+        total: newVideosFlattened.length,
+        successful,
+        failed
+      },
+      details: results.map(r => r.status === 'fulfilled' ? r.value : r.reason)
     });
   } catch (error) {
-    console.error("Cron job error:", error);
-    return NextResponse.json(
-      {
-        error: "Cron job failed",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    console.error("Error in video processing:", error);
+    
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

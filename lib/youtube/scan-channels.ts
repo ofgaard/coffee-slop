@@ -5,73 +5,72 @@ type NewVideo = {
   videoId: string;
   publishedAt: string;
   thumbnail: string;
+  channelId: string;
 };
 
-export default async function scanChannels(channelIds: string[]) {
-  const apiKey = process.env.YOUTUBE_API_KEY;
+export default async function scanChannels(channelIds: string[]): Promise<NewVideo[][]> {
+  const YOUTUBE_API_KEY: string = process.env.YOUTUBE_API_KEY || '';
+  
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const publishedAfter = sevenDaysAgo.toISOString();
+  
+  const getVideos = channelIds.map(async (channelId:string) => {
+    try {
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet,id&order=date&type=video&maxResults=5&publishedAfter=${publishedAfter}`
+   );
 
-  if (!apiKey) {
-    throw new Error("YOUTUBE_API_KEY not found in environment variables");
-  }
+   if (!response.ok) {
+    throw new Error ('Youtube API error')
+   }
+  
+   const data = await response.json();
 
-  const fetchVideos = channelIds.map(async (channelId) => {
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&order=date&maxResults=5`
-    );
+   const fetchedVideos = data.items || [];
 
-    if (!response.ok) {
-      throw new Error(`YouTube API Error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const videos = data.items ?? [];
-
-    const checkedVideos = await Promise.all(
-      videos.map(async (video: any) => {
-        const videoId = video?.id?.videoId;
-        if (!videoId) return null;
-
-        const exists = await checkArticleExists(videoId);
-        if (exists) return null;
-
-        return {
-          title: video.snippet.title,
-          videoId,
-          publishedAt: video.snippet.publishedAt,
-          thumbnail: video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high.url
-        } as NewVideo;
-      })
-    );
-
-    const newVideos = checkedVideos.filter(
-      (v): v is NewVideo => v !== null
-    );
-
-    if (newVideos.length === 0) {
+   const sortedVideos = await fetchedVideos.map(async (video) => {
+    if (video.snippet.channelId !== channelId) {
+      console.warn(`Video ${video.id.videoId} doesn't belong to channel ${channelId}, skipping`);
       return null;
     }
 
+    const exists = await checkArticleExists(video.id.videoId);
+    if (exists) {
+      console.log(`Video ${video.id.videoId} already exists, skipping`);
+      return null;
+    }
+    
+    console.log(`New video found: ${video.snippet.title} (${video.id.videoId})`);
     return {
-      channelId,
-      videos: newVideos
-    };
-  });
+        title: video.snippet.title,
+        videoId: video.id.videoId,
+        publishedAt: video.snippet.publishedAt,
+        thumbnail: video.snippet.thumbnails?.maxres?.url || 
+        video.snippet.thumbnails?.high?.url ||
+        video.snippet.thumbnails?.default?.url,
+        channelId: channelId
+    }
 
-  const results = await Promise.all(fetchVideos);
+   })
 
-  const validResults = results.filter(
-    (r): r is { channelId: string; videos: NewVideo[] } => r !== null
-  );
 
-  if (validResults.length === 0) {
-    throw new Error("No new videos from channel scans");
-  }
+   const videoResults = await Promise.all(sortedVideos);
 
-  const allVideos: Record<string, NewVideo[]> = {};
+  const filteredVideoResults = videoResults.filter((v): v is NewVideo => v !== null)
+   
+  return filteredVideoResults;
 
-  for (const result of validResults) {
-    allVideos[result.channelId] = result.videos;
-  }
 
-  return allVideos;
+    } catch (error) {
+      console.error(`Error fetching videos for channel ${channelId}:`, error);
+      return [];
+    }
+
+
+
+
+  })
+  
+  return await Promise.all(getVideos)
+  
 }

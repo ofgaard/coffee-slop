@@ -29,15 +29,15 @@ export async function summarizeTranscript(transcript: string): Promise<ArticleRe
           properties: {
             title: {
               type: "string",
-              description: "Concise, informative article title",
+              description: "Title in simple words highlighting the main point that would interest reader who's already very interested in specialty coffee and come here to stay up to date on the two most popular channels for their hobby (e.g. 5 tips for better aeropress (if the video contains 5 tips) or ´boiling water destroys pour over coffee´ if that is a key point in the video)",
             },
             summary: {
               type: "string",
-              description: "Short paragraph summarizing the article",
+              description: "just 1, max 2 short sentences summarizing the main points of the article",
             },
             article: {
               type: "string",
-              description: "The full article content, max 500 words",
+              description: "A well-structured, fun summary article based on transcription provided, max 500 words.",
             },
             wordCount: {
               type: "number",
@@ -53,9 +53,8 @@ export async function summarizeTranscript(transcript: string): Promise<ArticleRe
       {
         role: "system",
         content: `
-You are a professional writer.
-Turn video transcripts into clear, well-structured short articles that highlight the main points of the original material.
-Your writing style should be neutral and informative, not AI-slop.
+People come to the side because they love the two youtube channels covered here and want to keep up to date with their content in a quick and easy way.
+Use proper paragraph breaks - separate each paragraph with double line breaks (\\n\\n) for proper formatting.
 `,
       },
       {

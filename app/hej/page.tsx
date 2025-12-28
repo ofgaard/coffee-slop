@@ -23,6 +23,7 @@ export default async function HomePage() {
               <p className="text-sm text-gray-500 mt-4">
                 {article.word_count} words • {new Date(article.created_at).toLocaleDateString()}
               </p>
+              <p>by {article.creator}</p>
             </article>
           ))
         )}

@@ -7,6 +7,7 @@ type ArticleData = {
   article: string;
   word_count: number;
   thumbnail?: string;
+  creator: string;
 };
 
 export async function getArticleByVideoId(videoId: string) {
